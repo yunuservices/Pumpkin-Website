@@ -33,9 +33,11 @@ export function WorldMap({ geo, metric, onSelect }: WorldMapProps) {
   const [engine, setEngine] = useState<MapEngine | null>(null);
   const [failed, setFailed] = useState(false);
   const onSelectRef = useRef(onSelect);
+  const translationRef = useRef({ locale, s });
 
   useEffect(() => {
     onSelectRef.current = onSelect;
+    translationRef.current = { locale, s };
   });
 
   useEffect(() => {
@@ -77,6 +79,7 @@ export function WorldMap({ geo, metric, onSelect }: WorldMapProps) {
       },
       ...(hasData ? { visualizeData: { scale: [...MAP_RAMP], values } } : {}),
       onRegionTooltipShow(_event: unknown, tooltip: MapTooltip, code: string) {
+        const { locale, s } = translationRef.current;
         const entry = byCode.get(code);
         if (entry) {
           tooltip.text(
@@ -92,12 +95,6 @@ export function WorldMap({ geo, metric, onSelect }: WorldMapProps) {
       },
     });
 
-    for (const [selector, label] of [[".jvm-zoomin", s.zoomIn], [".jvm-zoomout", s.zoomOut]]) {
-      const button = container.querySelector(selector);
-      button?.setAttribute("aria-label", label);
-      button?.setAttribute("title", label);
-    }
-
     return () => {
       try {
         map.destroy();
@@ -105,7 +102,17 @@ export function WorldMap({ geo, metric, onSelect }: WorldMapProps) {
         container.innerHTML = "";
       }
     };
-  }, [engine, geo, metric, locale, s]);
+  }, [engine, geo, metric]);
+
+  useEffect(() => {
+    const container = document.getElementById(MAP_ID);
+    if (!container) return;
+    for (const [selector, label] of [[".jvm-zoomin", s.zoomIn], [".jvm-zoomout", s.zoomOut]]) {
+      const button = container.querySelector(selector);
+      button?.setAttribute("aria-label", label);
+      button?.setAttribute("title", label);
+    }
+  }, [engine, geo, metric, s.zoomIn, s.zoomOut]);
 
   return (
     <div className="relative h-72 md:h-104">
