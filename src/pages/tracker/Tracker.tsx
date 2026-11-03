@@ -328,27 +328,36 @@ export default function Tracker() {
   }, [category, open]);
 
   const visible = useMemo(() => {
-    const tokens = query.toLocaleLowerCase(languageTag(lang)).split(/\s+/).filter(Boolean);
+    const locale = languageTag(lang);
+    const tokens = query.split(/\s+/).filter(Boolean).map((token) => ({
+      localized: token.toLocaleLowerCase(locale),
+      original: token.toLowerCase(),
+    }));
     return current.entries.filter((entry) => {
       if (filter !== "all" && entry.status !== filter) return false;
       if (!tokens.length) return true;
       const original = ENTRIES.get(entryKey(entry));
-      const text = [
-        entry.name,
+      const sourceText = [
         original?.name ?? "",
         entry.group ?? "",
-        entry.groupLabel ?? "",
-        entry.note ?? "",
         original?.note ?? "",
-        ...(entry.items ?? []).map((item) => item.text),
         ...(original?.items ?? []).map((item) => item.text),
         ...(entry.issues ?? []).map((issue) => `#${issue.number} ${issue.title ?? ""}`),
         ...(entry.ids ?? []),
-      ]
-        .join(" ");
-      // Keep English source names searchable alongside Turkish case folding.
-      const haystack = `${text.toLocaleLowerCase(languageTag(lang))} ${text.toLowerCase()}`;
-      return tokens.every((token) => haystack.includes(token));
+      ].join(" ");
+      const text = [
+        entry.name,
+        entry.groupLabel ?? "",
+        entry.note ?? "",
+        ...(entry.items ?? []).map((item) => item.text),
+        sourceText,
+      ].join(" ");
+      const localizedHaystack = text.toLocaleLowerCase(locale);
+      // English source terms also use their own casing, even in mixed-language queries.
+      const originalHaystack = sourceText.toLowerCase();
+      return tokens.every((token) =>
+        localizedHaystack.includes(token.localized) || originalHaystack.includes(token.original),
+      );
     });
   }, [current, filter, query, lang]);
 
