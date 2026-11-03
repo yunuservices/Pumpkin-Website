@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { GITHUB_ORG_URL, GITHUB_URL } from "../../links";
 import { ChevronDownIcon, ExternalIcon } from "../../components/icons";
-import { useI18n } from "../../i18n";
+import { languageTag, useI18n } from "../../i18n";
 import { rich } from "../../i18n/rich";
 import { withBase } from "../../lib/url";
 import {
@@ -285,7 +285,7 @@ const ENTRIES = new Map(trackerData.all.entries.map((entry) => [entryKey(entry),
 
 /** Vanilla parity tracker page: browse, filter and search the tracked entries. */
 export default function Tracker() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const data = useMemo(() => getTrackerData(t), [t]);
   const views: Category[] = [data.all, ...data.categories];
   const [category, setCategory] = useState("all");
@@ -328,12 +328,12 @@ export default function Tracker() {
   }, [category, open]);
 
   const visible = useMemo(() => {
-    const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const tokens = query.toLocaleLowerCase(languageTag(lang)).split(/\s+/).filter(Boolean);
     return current.entries.filter((entry) => {
       if (filter !== "all" && entry.status !== filter) return false;
       if (!tokens.length) return true;
       const original = ENTRIES.get(entryKey(entry));
-      const haystack = [
+      const text = [
         entry.name,
         original?.name ?? "",
         entry.group ?? "",
@@ -345,11 +345,12 @@ export default function Tracker() {
         ...(entry.issues ?? []).map((issue) => `#${issue.number} ${issue.title ?? ""}`),
         ...(entry.ids ?? []),
       ]
-        .join(" ")
-        .toLowerCase();
+        .join(" ");
+      // Keep English source names searchable alongside Turkish case folding.
+      const haystack = `${text.toLocaleLowerCase(languageTag(lang))} ${text.toLowerCase()}`;
       return tokens.every((token) => haystack.includes(token));
     });
-  }, [current, filter, query]);
+  }, [current, filter, query, lang]);
 
   const anyVisibleOpen = visible.some((entry) => open.has(entryKey(entry)));
 
